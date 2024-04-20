@@ -112,4 +112,70 @@ public class GCScriptExtensionMethodsTest
         Assert.Equal(removeDuplicateSpacesExpected, removeDuplicateSpacesResult);
         Assert.Equal(removeAllSpacesExpected, removeAllSpacesResult);
     }
+
+    [Fact(DisplayName = "IsNullOrWhiteSpace - Check If String Is Null or White Space")]
+    public void ShouldCheckIfStringIsNullOrWhiteSpace()
+    {
+        // Arrange
+        var input1 = "";
+        var input2 = " ";
+        var input3 = "abc123";
+        var expected1 = true;
+        var expected2 = true;
+        var expected3 = false;
+
+        // Act
+        var result1 = input1.IsNullOrWhiteSpace();
+        var result2 = input2.IsNullOrWhiteSpace();
+        var result3 = input3.IsNullOrWhiteSpace();
+
+        // Assert
+        Assert.Equal(expected1, result1);
+        Assert.Equal(expected2, result2);
+        Assert.Equal(expected3, result3);
+    }
+
+    [Fact(DisplayName = "Left - Extract Left Part of Text")]
+    public void ShouldReturnLeftPartOfString()
+    {
+        // Arrange
+        var input1 = "Lorem ipsum dolor sit amet";
+        var input2 = "";
+        var input3 = "abc123";
+        var expected1 = "Lor";
+        var expected2 = "";
+        var expected3 = "";
+
+        // Act
+        var result1 = input1.Left(3);
+        var result2 = input2.Left(3);
+        var result3 = input3.Left(10);
+
+        // Assert
+        Assert.Equal(expected1, result1);
+        Assert.Equal(expected2, result2);
+        Assert.Equal(expected3, result3);
+    }
+
+    [Fact(DisplayName = "Right - Extract Right Part of Text")]
+    public void ShouldReturnRightPartOfString()
+    {
+        // Arrange
+        var input1 = "Lorem ipsum dolor sit amet";
+        var input2 = "";
+        var input3 = "abc123";
+        var expected1 = "met";
+        var expected2 = "";
+        var expected3 = "";
+
+        // Act
+        var result1 = input1.Right(3);
+        var result2 = input2.Right(3);
+        var result3 = input3.Right(10);
+
+        // Assert
+        Assert.Equal(expected1, result1);
+        Assert.Equal(expected2, result2);
+        Assert.Equal(expected3, result3);
+    }
 }

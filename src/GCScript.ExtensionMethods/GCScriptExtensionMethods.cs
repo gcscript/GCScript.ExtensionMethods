@@ -4,6 +4,7 @@ using System.Text;
 using SimMetrics.Net.Metric;
 using GCScript.ExtensionMethods.Enums;
 using GCScript.ExtensionMethods.Models;
+using System.Diagnostics.CodeAnalysis;
 
 namespace GCScript.ExtensionMethods;
 
@@ -110,9 +111,23 @@ public static class GCScriptExtensionMethods
 
     private static string OnlyLettersNumbersSpaces(this string? text)
     {
-        if (string.IsNullOrWhiteSpace(text)) { return ""; }
+        if (text.IsNullOrWhiteSpace()) { return ""; }
         text = Regex.Replace(text, @"[^a-zA-Z0-9\s]", "");
         return text;
+    }
+
+    public static bool IsNullOrWhiteSpace([NotNullWhen(false)] this string? text) => string.IsNullOrWhiteSpace(text);
+
+    public static string Left(this string? text, int length)
+    {
+        if (text.IsNullOrWhiteSpace() || length < 0 || length > text.Length) { return ""; }
+        return text[..length];
+    }
+
+    public static string Right(this string? text, int length)
+    {
+        if (text.IsNullOrWhiteSpace() || length < 0 || length > text.Length) { return ""; }
+        return text[^length..];
     }
 
     public static double GetStringSimilarityPercentage(this string? text, string? textToCompare, StringSimilarityOptions? options = null)
