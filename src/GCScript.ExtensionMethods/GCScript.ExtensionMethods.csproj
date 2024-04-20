@@ -19,6 +19,17 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <None Include="..\..\LICENSE.txt">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	  <None Include="..\..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
+
+	<ItemGroup>
 	  <PackageReference Include="SimMetrics.Net" Version="1.0.5" />
 	</ItemGroup>
 

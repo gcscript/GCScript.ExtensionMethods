@@ -47,7 +47,7 @@ public static class GCScriptExtensionMethods
         switch (removeSpaces)
         {
             case ETextRemoveSpaces.Duplicate: { text = text.RemoveDuplicateSpaces(); break; }
-            case ETextRemoveSpaces.All: { text = text.RemoveSpaces(); break; }
+            case ETextRemoveSpaces.All: { text = text.RemoveAllSpaces(); break; }
         }
 
         switch (textType)
@@ -73,7 +73,7 @@ public static class GCScriptExtensionMethods
         return sbReturn.ToString();
     }
 
-    private static string RemoveSpaces(this string? text)
+    private static string RemoveAllSpaces(this string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) { return ""; }
         text = Regex.Replace(text, @"\s", "");
