@@ -3,7 +3,7 @@ using GCScript.ExtensionMethods.Enums;
 
 namespace GCScript.ExtensionMethodsTest;
 
-public class GCScriptExtensionMethodsTest
+public class GCScriptStringExtensionsTest
 {
     [Fact(DisplayName = "ProcessText - Default Text Processing")]
     public void ShouldProcessTextWithDefaultOptions()
@@ -86,8 +86,8 @@ public class GCScriptExtensionMethodsTest
         // Act
         var onlyLettersResult = input.ProcessText(removeAccents: false, textTrim: ETextTrim.None, textCase: ETextCase.None, textType: ETextType.OnlyLetters, removeSpaces: ETextRemoveSpaces.None);
         var onlyNumbersResult = input.ProcessText(removeAccents: false, textTrim: ETextTrim.None, textCase: ETextCase.None, textType: ETextType.OnlyNumbers, removeSpaces: ETextRemoveSpaces.None);
-        var onlyLettersNumbersResult = input.ProcessText(removeAccents: false, textTrim: ETextTrim.None, textCase: ETextCase.None, textType: ETextType.OnlyLettersNumbers, removeSpaces: ETextRemoveSpaces.None);
-        var onlyLettersNumbersSpacesResult = input.ProcessText(removeAccents: false, textTrim: ETextTrim.None, textCase: ETextCase.None, textType: ETextType.OnlyLettersNumbersSpaces, removeSpaces: ETextRemoveSpaces.None);
+        var onlyLettersNumbersResult = input.ProcessText(removeAccents: false, textTrim: ETextTrim.None, textCase: ETextCase.None, textType: ETextType.OnlyLettersAndNumbers, removeSpaces: ETextRemoveSpaces.None);
+        var onlyLettersNumbersSpacesResult = input.ProcessText(removeAccents: false, textTrim: ETextTrim.None, textCase: ETextCase.None, textType: ETextType.OnlyLettersAndNumbersAndSpaces, removeSpaces: ETextRemoveSpaces.None);
 
         // Assert
         Assert.Equal(onlyLettersExpected, onlyLettersResult);
@@ -144,7 +144,7 @@ public class GCScriptExtensionMethodsTest
         var input3 = "abc123";
         var expected1 = "Lor";
         var expected2 = "";
-        var expected3 = "";
+        var expected3 = "abc123";
 
         // Act
         var result1 = input1.Left(3);
@@ -166,12 +166,78 @@ public class GCScriptExtensionMethodsTest
         var input3 = "abc123";
         var expected1 = "met";
         var expected2 = "";
-        var expected3 = "";
+        var expected3 = "abc123";
 
         // Act
         var result1 = input1.Right(3);
         var result2 = input2.Right(3);
         var result3 = input3.Right(10);
+
+        // Assert
+        Assert.Equal(expected1, result1);
+        Assert.Equal(expected2, result2);
+        Assert.Equal(expected3, result3);
+    }
+
+    [Fact(DisplayName = "ToSlug - Convert Text to Slug")]
+    public void ShouldConvertTextToSlug()
+    {
+        // Arrange
+        var input1 = "Lorem ipsum dolor sit amet";
+        var input2 = "  Text with  spaces  ";
+        var input3 = "áéíóú";
+        var expected1 = "lorem-ipsum-dolor-sit-amet";
+        var expected2 = "text-with-spaces";
+        var expected3 = "aeiou";
+
+        // Act
+        var result1 = input1.ToSlug();
+        var result2 = input2.ToSlug();
+        var result3 = input3.ToSlug();
+
+        // Assert
+        Assert.Equal(expected1, result1);
+        Assert.Equal(expected2, result2);
+        Assert.Equal(expected3, result3);
+    }
+
+    [Fact(DisplayName = "ToPascalCase - Convert Text to Pascal Case")]
+    public void ShouldConvertTextToPascalCase()
+    {
+        // Arrange
+        var input1 = "Lorem ipsum dolor sit amet";
+        var input2 = "  Text with  spaces  ";
+        var input3 = "áéíóú";
+        var expected1 = "LoremIpsumDolorSitAmet";
+        var expected2 = "TextWithSpaces";
+        var expected3 = "Aeiou";
+
+        // Act
+        var result1 = input1.ToPascalCase();
+        var result2 = input2.ToPascalCase();
+        var result3 = input3.ToPascalCase();
+
+        // Assert
+        Assert.Equal(expected1, result1);
+        Assert.Equal(expected2, result2);
+        Assert.Equal(expected3, result3);
+    }
+
+    [Fact(DisplayName = "ToCamelCase - Convert Text to Camel Case")]
+    public void ShouldConvertTextToCamelCase()
+    {
+        // Arrange
+        var input1 = "Lorem ipsum dolor sit amet";
+        var input2 = "  Text with  spaces  ";
+        var input3 = "áéíóú";
+        var expected1 = "loremIpsumDolorSitAmet";
+        var expected2 = "textWithSpaces";
+        var expected3 = "aeiou";
+
+        // Act
+        var result1 = input1.ToCamelCase();
+        var result2 = input2.ToCamelCase();
+        var result3 = input3.ToCamelCase();
 
         // Assert
         Assert.Equal(expected1, result1);

@@ -1,6 +1,6 @@
 ﻿namespace GCScript.ExtensionMethods.Models;
 
-public class StringSimilarityOptions
+public class GCScriptStringSimilarityOptions
 {
     public bool Levenstein { get; set; } = true;
     public bool JaroWinkler { get; set; } = false;
