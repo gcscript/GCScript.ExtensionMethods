@@ -1,4 +1,4 @@
-﻿namespace GCScript.Shared.Enums;
+﻿namespace GCScript.ExtensionMethods.Enums;
 
 public enum EOccurrenceComparisonOperator
 {
