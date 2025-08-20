@@ -747,6 +747,97 @@ public static class GCScriptStringExtensions {
 		return false;
 	}
 
+	public static ProcessNumber? ToProcessNumber(this string? processNumber) {
+		try {
+			if (string.IsNullOrWhiteSpace(processNumber)) { return null; }
+			processNumber = processNumber.OnlyNumbers().PadLeft(20, '0');
+			if (processNumber.Length != 20) { return null; }
+			if (processNumber.All(x => x == '0')) { return null; }
+
+			var number = processNumber[..7];
+			var digit = processNumber[7..9];
+			var year = processNumber[9..13];
+			var agency = processNumber[13..14];
+			var court = processNumber[14..16];
+			var forum = processNumber[16..20];
+			var fullFormatted = Regex.Replace(processNumber, "([0-9]{7})([0-9]{2})([0-9]{4})([0-9]{1})([0-9]{2})([0-9]{4})", "$1-$2.$3.$4.$5.$6");
+
+			if (!int.TryParse(year, out int yearInt) || yearInt < 1900 || yearInt > DateTime.Now.Year + 1) { return null; }
+
+			var validCourts = new HashSet<string>{
+					"4.01", // AC | AM | AP | BA | DF | GO | MA | MT | PA | PI | RO | RR | TO
+					"4.02", // ES | RJ
+					"4.03", // MS | SP
+					"4.04", // PR | RS | SC
+					"4.05", // AL | CE | PB | PE | RN | SE
+					"4.06", // MG
+					"5.01", // RJ
+					"5.02", // SP
+					"5.03", // MG
+					"5.04", // RS
+					"5.05", // BA
+					"5.06", // PE
+					"5.07", // CE
+					"5.08", // AP | PA
+					"5.09", // PR
+					"5.10", // DF | TO
+					"5.11", // AM | RR
+					"5.12", // SC
+					"5.13", // PB
+					"5.14", // AC | RO
+					"5.15", // SP
+					"5.16", // MA
+					"5.17", // ES
+					"5.18", // GO
+					"5.19", // AL
+					"5.20", // SE
+					"5.21", // RN
+					"5.22", // PI
+					"5.23", // MT
+					"5.24", // MS
+					"8.01", // AC
+					"8.02", // AL
+					"8.03", // AP
+					"8.04", // AM
+					"8.05", // BA
+					"8.06", // CE
+					"8.07", // DF
+					"8.08", // ES
+					"8.09", // GO
+					"8.10", // MA
+					"8.11", // MT
+					"8.12", // MS
+					"8.13", // MG
+					"8.14", // PA
+					"8.15", // PB
+					"8.16", // PR
+					"8.17", // PE
+					"8.18", // PI
+					"8.19", // RJ
+					"8.20", // RN
+					"8.21", // RS
+					"8.22", // RO
+					"8.23", // RR
+					"8.24", // SC
+					"8.25", // SP
+					"8.26", // SE
+					"8.27", // TO
+				};
+			if (!validCourts.Contains($"{agency}.{court}")) { return null; }
+
+			return new ProcessNumber() {
+				Number = number,
+				Digit = digit,
+				Year = year,
+				Agency = agency,
+				Court = court,
+				Forum = forum,
+				FullFormatted = fullFormatted,
+				FullUnformatted = processNumber
+			};
+		}
+		catch { return null; }
+	}
 
 	/// <summary>
 	/// [PT-BR] Verifica se o texto especificado contém as palavras especificadas com o número de ocorrências especificado, com base no tipo de comparação fornecido.
