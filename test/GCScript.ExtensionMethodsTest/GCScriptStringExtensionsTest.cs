@@ -186,22 +186,43 @@ public class GCScriptStringExtensionsTest
         var input1 = "Lorem ipsum dolor sit amet";
         var input2 = "  Text with  spaces  ";
         var input3 = "áéíóú";
-        var expected1 = "lorem-ipsum-dolor-sit-amet";
+		var expected1 = "lorem-ipsum-dolor-sit-amet";
         var expected2 = "text-with-spaces";
         var expected3 = "aeiou";
 
-        // Act
-        var result1 = input1.ToSlug();
+		// Act
+		var result1 = input1.ToSlug();
         var result2 = input2.ToSlug();
         var result3 = input3.ToSlug();
 
-        // Assert
-        Assert.Equal(expected1, result1);
+		// Assert
+		Assert.Equal(expected1, result1);
         Assert.Equal(expected2, result2);
         Assert.Equal(expected3, result3);
-    }
+	}
 
-    [Fact(DisplayName = "ToPascalCase - Convert Text to Pascal Case")]
+	[Fact(DisplayName = "ToSnakeCase - Convert Text to SnakeCase")]
+	public void ShouldConvertTextToSnakeCase() {
+		// Arrange
+		var input1 = "Lorem ipsum dolor sit amet";
+		var input2 = "  Text with  spaces  ";
+		var input3 = "áéíóú";
+		var expected1 = "lorem_ipsum_dolor_sit_amet";
+		var expected2 = "text_with_spaces";
+		var expected3 = "aeiou";
+
+		// Act
+		var result1 = input1.ToSnakeCase();
+		var result2 = input2.ToSnakeCase();
+		var result3 = input3.ToSnakeCase();
+
+		// Assert
+		Assert.Equal(expected1, result1);
+		Assert.Equal(expected2, result2);
+		Assert.Equal(expected3, result3);
+	}
+
+	[Fact(DisplayName = "ToPascalCase - Convert Text to Pascal Case")]
     public void ShouldConvertTextToPascalCase()
     {
         // Arrange
