@@ -747,6 +747,133 @@ public static class GCScriptStringExtensions {
 		return false;
 	}
 
+	/// <summary>
+	/// [PT-BR] Valida um CPF brasileiro (módulo 11, rejeita dígitos repetidos). Aceita com ou sem máscara.
+	/// [EN] Validate a Brazilian CPF (modulo 11, rejects identical digits). Accepts masked or unmasked input.
+	/// </summary>
+	public static bool IsValidCPF(this string? value) {
+		if (string.IsNullOrWhiteSpace(value)) { return false; }
+		value = value.OnlyNumbers().PadLeft(11, '0');
+		if (value == "00000000000") { return false; }
+
+		Span<int> digits = stackalloc int[11];
+		int count = 0;
+		bool identical = true;
+		int first = -1;
+		foreach (var c in value) {
+			if (!char.IsDigit(c)) { continue; }
+			if (count >= 11) { return false; }
+			int d = c - '0';
+			if (first < 0) { first = d; }
+			else if (d != first) { identical = false; }
+			digits[count++] = d;
+		}
+		if (count != 11 || identical) { return false; }
+
+		int sum1 = 0, sum2 = 0;
+		for (int i = 0; i < 9; i++) {
+			sum1 += digits[i] * (10 - i);
+			sum2 += digits[i] * (11 - i);
+		}
+		int dv1 = sum1 % 11; dv1 = dv1 < 2 ? 0 : 11 - dv1;
+		if (digits[9] != dv1) { return false; }
+		sum2 += dv1 * 2;
+		int dv2 = sum2 % 11; dv2 = dv2 < 2 ? 0 : 11 - dv2;
+		return digits[10] == dv2;
+	}
+
+	/// <summary>
+	/// [PT-BR] Valida um CNPJ brasileiro (módulo 11 com pesos, rejeita dígitos repetidos). Aceita com ou sem máscara.
+	/// [EN] Validate a Brazilian CNPJ (weighted modulo 11). Accepts masked or unmasked input.
+	/// </summary>
+	public static bool IsValidCNPJ(this string? value) {
+		if (string.IsNullOrWhiteSpace(value)) { return false; }
+		value = value.OnlyNumbers().PadLeft(14, '0');
+		if (value == "00000000000000") { return false; }
+
+		ReadOnlySpan<byte> m1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+		ReadOnlySpan<byte> m2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+
+		Span<int> digits = stackalloc int[14];
+		int count = 0;
+		bool identical = true;
+		int first = -1;
+		foreach (var c in value) {
+			if (!char.IsDigit(c)) { continue; }
+			if (count >= 14) { return false; }
+			int d = c - '0';
+			if (first < 0) { first = d; }
+			else if (d != first) { identical = false; }
+			digits[count++] = d;
+		}
+		if (count != 14 || identical) { return false; }
+
+		int sum1 = 0, sum2 = 0;
+		for (int i = 0; i < 12; i++) {
+			sum1 += digits[i] * m1[i];
+			sum2 += digits[i] * m2[i];
+		}
+		int dv1 = sum1 % 11; dv1 = dv1 < 2 ? 0 : 11 - dv1;
+		if (digits[12] != dv1) { return false; }
+		sum2 += dv1 * m2[12];
+		int dv2 = sum2 % 11; dv2 = dv2 < 2 ? 0 : 11 - dv2;
+		return digits[13] == dv2;
+	}
+
+	/// <summary>
+	/// [PT-BR] Formata a string como CPF. Com withMask=true retorna ###.###.###-##; senão apenas 11 dígitos (pad zeros à esquerda).
+	/// [EN] Format string as CPF (with or without mask). Pads with leading zeros if needed.
+	/// </summary>
+	public static string ToCPF(this string? value, bool withMask = false) {
+		if (string.IsNullOrWhiteSpace(value)) { return string.Empty; }
+		value = value.OnlyNumbers().PadLeft(11, '0');
+		if (value == "00000000000") { return string.Empty; }
+
+		Span<char> digits = stackalloc char[11];
+		int count = 0;
+		foreach (var c in value) {
+			if (!char.IsDigit(c)) { continue; }
+			if (count >= 11) { return string.Empty; }
+			digits[count++] = c;
+		}
+		if (count == 0) { return string.Empty; }
+		if (count < 11) {
+			int pad = 11 - count;
+			digits[..count].CopyTo(digits[pad..]);
+			digits[..pad].Fill('0');
+		}
+
+		if (!withMask) { return new string(digits); }
+		return $"{digits[..3]}.{digits.Slice(3, 3)}.{digits.Slice(6, 3)}-{digits.Slice(9, 2)}";
+	}
+
+	/// <summary>
+	/// [PT-BR] Formata a string como CNPJ. Com withMask=true retorna ##.###.###/####-##; senão apenas 14 dígitos (pad zeros à esquerda).
+	/// [EN] Format string as CNPJ (with or without mask). Pads with leading zeros if needed.
+	/// </summary>
+	public static string ToCNPJ(this string? value, bool withMask = false) {
+		if (string.IsNullOrWhiteSpace(value)) { return string.Empty; }
+		value = value.OnlyNumbers().PadLeft(14, '0');
+		if (value == "00000000000000") { return string.Empty; }
+
+		Span<char> digits = stackalloc char[14];
+		int count = 0;
+		foreach (var c in value) {
+			if (!char.IsDigit(c)) { continue; }
+			if (count >= 14) { return string.Empty; }
+			digits[count++] = c;
+		}
+		if (count == 0) { return string.Empty; }
+		if (count < 14) {
+			int pad = 14 - count;
+			digits[..count].CopyTo(digits[pad..]);
+			digits[..pad].Fill('0');
+		}
+
+		if (!withMask) { return new string(digits); }
+		return $"{digits[..2]}.{digits.Slice(2, 3)}.{digits.Slice(5, 3)}/{digits.Slice(8, 4)}-{digits.Slice(12, 2)}";
+	}
+
 	public static ProcessNumber? ToProcessNumber(this string? processNumber) {
 		try {
 			if (string.IsNullOrWhiteSpace(processNumber)) { return null; }
