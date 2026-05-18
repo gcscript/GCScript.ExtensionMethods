@@ -751,7 +751,7 @@ public static class GCScriptStringExtensions {
 	/// [PT-BR] Valida um CPF brasileiro (módulo 11, rejeita dígitos repetidos). Aceita com ou sem máscara.
 	/// [EN] Validate a Brazilian CPF (modulo 11, rejects identical digits). Accepts masked or unmasked input.
 	/// </summary>
-	public static bool IsValidCPF(this string? value) {
+	public static bool IsValidCpf(this string? value) {
 		if (string.IsNullOrWhiteSpace(value)) { return false; }
 		value = value.OnlyNumbers().PadLeft(11, '0');
 		if (value == "00000000000") { return false; }
@@ -786,7 +786,7 @@ public static class GCScriptStringExtensions {
 	/// [PT-BR] Valida um CNPJ brasileiro (módulo 11 com pesos, rejeita dígitos repetidos). Aceita com ou sem máscara.
 	/// [EN] Validate a Brazilian CNPJ (weighted modulo 11). Accepts masked or unmasked input.
 	/// </summary>
-	public static bool IsValidCNPJ(this string? value) {
+	public static bool IsValidCnpj(this string? value) {
 		if (string.IsNullOrWhiteSpace(value)) { return false; }
 		value = value.OnlyNumbers().PadLeft(14, '0');
 		if (value == "00000000000000") { return false; }
@@ -821,10 +821,18 @@ public static class GCScriptStringExtensions {
 	}
 
 	/// <summary>
-	/// [PT-BR] Formata a string como CPF. Com withMask=true retorna ###.###.###-##; senão apenas 11 dígitos (pad zeros à esquerda).
-	/// [EN] Format string as CPF (with or without mask). Pads with leading zeros if needed.
+	/// [PT-BR] Formata a string como CPF sem máscara, retornando apenas os 11 dígitos (preenche com zeros à esquerda se necessário).
+	/// [EN] Formats the string as an unmasked CPF, returning only the 11 digits (pads with leading zeros if needed).
 	/// </summary>
-	public static string ToCPF(this string? value, bool withMask = false) {
+	public static string ToCpf(this string? value) => FormatCpf(value, withMask: false);
+
+	/// <summary>
+	/// [PT-BR] Formata a string como CPF com máscara no formato ###.###.###-## (preenche com zeros à esquerda se necessário).
+	/// [EN] Formats the string as a masked CPF in the format ###.###.###-## (pads with leading zeros if needed).
+	/// </summary>
+	public static string ToCpfWithMask(this string? value) => FormatCpf(value, withMask: true);
+
+	private static string FormatCpf(string? value, bool withMask) {
 		if (string.IsNullOrWhiteSpace(value)) { return string.Empty; }
 		value = value.OnlyNumbers().PadLeft(11, '0');
 		if (value == "00000000000") { return string.Empty; }
@@ -848,10 +856,18 @@ public static class GCScriptStringExtensions {
 	}
 
 	/// <summary>
-	/// [PT-BR] Formata a string como CNPJ. Com withMask=true retorna ##.###.###/####-##; senão apenas 14 dígitos (pad zeros à esquerda).
-	/// [EN] Format string as CNPJ (with or without mask). Pads with leading zeros if needed.
+	/// [PT-BR] Formata a string como CNPJ sem máscara, retornando apenas os 14 dígitos (preenche com zeros à esquerda se necessário).
+	/// [EN] Formats the string as an unmasked CNPJ, returning only the 14 digits (pads with leading zeros if needed).
 	/// </summary>
-	public static string ToCNPJ(this string? value, bool withMask = false) {
+	public static string ToCnpj(this string? value) => FormatCnpj(value, withMask: false);
+
+	/// <summary>
+	/// [PT-BR] Formata a string como CNPJ com máscara no formato ##.###.###/####-## (preenche com zeros à esquerda se necessário).
+	/// [EN] Formats the string as a masked CNPJ in the format ##.###.###/####-## (pads with leading zeros if needed).
+	/// </summary>
+	public static string ToCnpjWithMask(this string? value) => FormatCnpj(value, withMask: true);
+
+	private static string FormatCnpj(string? value, bool withMask) {
 		if (string.IsNullOrWhiteSpace(value)) { return string.Empty; }
 		value = value.OnlyNumbers().PadLeft(14, '0');
 		if (value == "00000000000000") { return string.Empty; }
