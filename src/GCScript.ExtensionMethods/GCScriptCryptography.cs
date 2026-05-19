@@ -23,30 +23,4 @@ public static class GCScriptCryptography {
 		byte[] key = RandomNumberGenerator.GetBytes(keySize / 8);
 		return Convert.ToBase64String(key);
 	}
-
-	/// <summary>
-	/// [PT-BR] Gera um IV (Initialization Vector) aleatório de 16 bytes para AES-CBC, codificado em Base64.
-	/// [EN] Generates a random 16-byte Initialization Vector for AES-CBC, encoded in Base64.
-	/// </summary>
-	/// <returns>
-	/// [PT-BR] IV aleatório codificado em Base64.
-	/// [EN] Random IV encoded in Base64.
-	/// </returns>
-	public static string GenerateAesIv() {
-		byte[] iv = RandomNumberGenerator.GetBytes(16);
-		return Convert.ToBase64String(iv);
-	}
-
-	/// <summary>
-	/// [PT-BR] Gera um nonce aleatório de 12 bytes para AES-GCM, codificado em Base64.
-	/// [EN] Generates a random 12-byte nonce for AES-GCM, encoded in Base64.
-	/// </summary>
-	/// <returns>
-	/// [PT-BR] Nonce aleatório codificado em Base64.
-	/// [EN] Random nonce encoded in Base64.
-	/// </returns>
-	public static string GenerateAesNonce() {
-		byte[] nonce = RandomNumberGenerator.GetBytes(AesGcm.NonceByteSizes.MaxSize);
-		return Convert.ToBase64String(nonce);
-	}
 }
