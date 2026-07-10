@@ -265,4 +265,22 @@ public class GCScriptStringExtensionsTest
         Assert.Equal(expected2, result2);
         Assert.Equal(expected3, result3);
     }
+
+    [Fact(DisplayName = "Reverse - Reverses Character Order")]
+    public void ShouldReverseCharacterOrder()
+    {
+        // Act & Assert
+        Assert.Equal("dlrow olleh", "hello world".Reverse());
+        Assert.Equal("cba", "abc".Reverse());
+        Assert.Equal("a", "a".Reverse());
+    }
+
+    [Theory(DisplayName = "Reverse - Null Or Whitespace Returns Empty")]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ShouldReturnEmptyForNullOrWhitespace(string? input)
+    {
+        Assert.Equal(string.Empty, input.Reverse());
+    }
 }

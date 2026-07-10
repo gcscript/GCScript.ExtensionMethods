@@ -3,6 +3,7 @@ using GCScript.ExtensionMethods.Models;
 using SimMetrics.Net.Metric;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Net.Mail;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -409,7 +410,9 @@ public static class GCScriptStringExtensions {
 	/// </returns>
 	public static string Reverse(this string? text) {
 		if (string.IsNullOrWhiteSpace(text)) return string.Empty;
-		return new string(text.Reverse().ToArray());
+		char[] chars = text.ToCharArray();
+		Array.Reverse(chars);
+		return new string(chars);
 	}
 
 	public static List<string> GetUniqueWords(this string text) {
@@ -628,7 +631,7 @@ public static class GCScriptStringExtensions {
 	/// </returns>
 
 	public static bool HasRepeatedCharacters(this string text) {
-		var seen = new HashSet<char>();
+		HashSet<char> seen = new HashSet<char>();
 		foreach (var c in text) { if (!seen.Add(c)) return true; }
 		return false;
 	}
@@ -718,7 +721,7 @@ public static class GCScriptStringExtensions {
 	public static bool IsValidEmail(this string? email) {
 		if (email.IsNullOrWhiteSpace()) { return false; }
 		try {
-			var addr = new System.Net.Mail.MailAddress(email);
+			MailAddress addr = new System.Net.Mail.MailAddress(email);
 			return addr.Address == email;
 		}
 		catch {
@@ -736,7 +739,7 @@ public static class GCScriptStringExtensions {
 			return false;
 		}
 
-		if (Uri.TryCreate(url, UriKind.Absolute, out Uri result)) {
+		if (Uri.TryCreate(url, UriKind.Absolute, out Uri? result)) {
 			if (!(result.Scheme == Uri.UriSchemeHttp)) {
 				return result.Scheme == Uri.UriSchemeHttps;
 			}
@@ -907,7 +910,7 @@ public static class GCScriptStringExtensions {
 
 			if (!int.TryParse(year, out int yearInt) || yearInt < 1900 || yearInt > DateTime.Now.Year + 1) { return null; }
 
-			var validCourts = new HashSet<string>{
+			HashSet<string> validCourts = new HashSet<string>{
 					"4.01", // AC | AM | AP | BA | DF | GO | MA | MT | PA | PI | RO | RR | TO
 					"4.02", // ES | RJ
 					"4.03", // MS | SP
