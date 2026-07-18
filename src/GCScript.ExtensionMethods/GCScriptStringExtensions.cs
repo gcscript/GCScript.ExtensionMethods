@@ -84,6 +84,46 @@ public static class GCScriptStringExtensions {
 	}
 
 	/// <summary>
+	/// [PT-BR] Processa o texto com as mesmas opções padrão de ProcessText, exceto que a caixa do texto é sempre convertida para maiúsculas (ToUpper).
+	/// [EN] Processes the text with the same default options as ProcessText, except the text case is always converted to uppercase (ToUpper).
+	/// </summary>
+	/// <param name="text">
+	/// [PT-BR] O texto de entrada a ser processado.
+	/// [EN] The input text to be processed.
+	/// </param>
+	/// <param name="removeAccents">
+	/// [PT-BR] Indica se os acentos devem ser removidos do texto. O valor padrão é true.
+	/// [EN] Indicates whether accents should be removed from the text. The default value is true.
+	/// </param>
+	/// <param name="textTrim">
+	/// [PT-BR] Um valor do enum especificando as opções de remoção de espaços no texto. O valor padrão é ETextTrim.Trim.
+	/// [EN] An enum specifying the trimming options for the text. The default value is ETextTrim.Trim.
+	/// </param>
+	/// <param name="textType">
+	/// [PT-BR] Um valor do enum especificando o tipo de caracteres a serem mantidos no texto. O valor padrão é ETextType.None.
+	/// [EN] An enum specifying the type of characters to keep in the text. The default value is ETextType.None.
+	/// </param>
+	/// <param name="removeSpaces">
+	/// [PT-BR] Um valor do enum especificando as opções de remoção de espaços no texto. O valor padrão é ETextRemoveSpaces.Duplicate.
+	/// [EN] An enum specifying the space removal options for the text. The default value is ETextRemoveSpaces.Duplicate.
+	/// </param>
+	/// <returns>
+	/// [PT-BR] O texto processado em maiúsculas com base nas opções especificadas.
+	/// [EN] The processed text in uppercase based on the specified options.
+	/// </returns>
+	public static string ProcessTextToUpper(this string? text,
+											bool removeAccents = true,
+											ETextTrim textTrim = ETextTrim.Trim,
+											ETextType textType = ETextType.None,
+											ETextRemoveSpaces removeSpaces = ETextRemoveSpaces.Duplicate) {
+		return text.ProcessText(removeAccents: removeAccents,
+								textTrim: textTrim,
+								textCase: ETextCase.ToUpper,
+								textType: textType,
+								removeSpaces: removeSpaces);
+	}
+
+	/// <summary>
 	/// [PT-BR] Remove os acentos do texto de entrada.
 	/// [EN] Removes accents from the input text.
 	/// </summary>

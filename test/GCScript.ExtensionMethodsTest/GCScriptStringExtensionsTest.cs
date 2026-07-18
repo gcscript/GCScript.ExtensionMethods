@@ -113,6 +113,48 @@ public class GCScriptStringExtensionsTest
         Assert.Equal(removeAllSpacesExpected, removeAllSpacesResult);
     }
 
+    [Fact(DisplayName = "ProcessTextToUpper - Default Uppercase Processing")]
+    public void ShouldProcessTextToUpperWithDefaultOptions()
+    {
+        // Arrange
+        var input = "  Olá   Mundo  ";
+        var expected = "OLA MUNDO";
+
+        // Act
+        var result = input.ProcessTextToUpper();
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+
+    [Fact(DisplayName = "ProcessTextToUpper - Matches ProcessText With ToUpper")]
+    public void ShouldMatchProcessTextWithToUpper()
+    {
+        // Arrange
+        var input = "  Olá   Mundo 123!  ";
+
+        // Act
+        var upperResult = input.ProcessTextToUpper();
+        var processResult = input.ProcessText(textCase: ETextCase.ToUpper);
+
+        // Assert
+        Assert.Equal(processResult, upperResult);
+    }
+
+    [Fact(DisplayName = "ProcessTextToUpper - Respects Other Options")]
+    public void ShouldProcessTextToUpperRespectingOtherOptions()
+    {
+        // Arrange
+        var input = "  Olá   Mundo 123!  ";
+        var expected = "OLAMUNDO";
+
+        // Act
+        var result = input.ProcessTextToUpper(removeAccents: true, textType: ETextType.OnlyLetters, removeSpaces: ETextRemoveSpaces.All);
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+
     [Fact(DisplayName = "IsNullOrWhiteSpace - Check If String Is Null or White Space")]
     public void ShouldCheckIfStringIsNullOrWhiteSpace()
     {
