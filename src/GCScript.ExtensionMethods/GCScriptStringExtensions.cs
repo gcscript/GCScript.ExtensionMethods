@@ -1097,6 +1097,7 @@ public static class GCScriptStringExtensions {
 	/// </returns>
 	public static double GetStringSimilarityPercentage(this string? text, string? textToCompare, GCScriptStringSimilarityOptions? options = null) {
 		options ??= new GCScriptStringSimilarityOptions() { Levenstein = true, JaroWinkler = false, Jaccard = false, ProcessText = true };
+		EnsureAnyMetric(options, "options", nameof(options));
 		if (options.ProcessText) { text = text.ProcessText(); textToCompare = textToCompare.ProcessText(); }
 		if (text.IsNullOrWhiteSpace() || textToCompare.IsNullOrWhiteSpace()) { return 0; }
 		List<(string Method, double Similarity)> similarities = new();
@@ -1128,6 +1129,7 @@ public static class GCScriptStringExtensions {
 	/// </returns>
 	public static List<(string Method, double Percentage)> GetStringListSimilarityPercentages(this string? text, List<string> listToCompare, GCScriptStringSimilarityOptions? options = null) {
 		options ??= new GCScriptStringSimilarityOptions() { Levenstein = true, JaroWinkler = false, Jaccard = false, ProcessText = true };
+		EnsureAnyMetric(options, "options", nameof(options));
 		if (options.ProcessText) { text = text.ProcessText(); listToCompare = listToCompare.Select(x => x.ProcessText()).Where(x => !x.IsNullOrWhiteSpace()).ToList(); }
 		else { listToCompare = listToCompare.Where(x => !x.IsNullOrWhiteSpace()).ToList(); }
 
@@ -1141,5 +1143,120 @@ public static class GCScriptStringExtensions {
 			similarities.Add((Method: item, Percentage: Math.Round(similaritiesItem.Average(x => x.Similarity) * 100, 2)));
 		}
 		return [.. similarities.OrderByDescending(x => x.Percentage).ThenBy(x => x.Method).ToArray()];
+	}
+
+	/// <summary>
+	/// [PT-BR] Recusa uma configuração de métrica sem nenhum algoritmo ligado.
+	/// [EN] Rejects a metric configuration with no algorithm enabled.
+	/// </summary>
+	/// <remarks>
+	/// [PT-BR] Sem nenhum algoritmo não há o que medir, e a média de zero elementos estoura com "Sequence contains no elements" - mensagem que não aponta a opção culpada. Nulo passa: aí vale o padrão de quem consome.
+	/// [EN] With no algorithm there is nothing to measure, and averaging zero elements throws "Sequence contains no elements" - a message that does not point at the guilty option. Null passes: the consumer default applies then.
+	/// </remarks>
+	private static void EnsureAnyMetric(GCScriptStringSimilarityOptions? metric, string subject, string paramName) {
+		if (metric is { Levenstein: false, JaroWinkler: false, Jaccard: false }) {
+			throw new ArgumentException($"{subject} precisa de pelo menos um algoritmo ligado (Levenstein, JaroWinkler ou Jaccard).", paramName);
+		}
+	}
+
+	/// <summary>
+	/// [PT-BR] Calcula a porcentagem de similaridade entre dois nomes de pessoa, emparelhando as palavras de um com as do outro.
+	/// [EN] Calculates the similarity percentage between two person names, pairing the words of one with the words of the other.
+	/// </summary>
+	/// <remarks>
+	/// [PT-BR] Comparar nomes como texto corrido não serve para cadastro: uma partícula a menos desloca a frase inteira, uma inicial abreviada vira caractere faltando e um sobrenome escrito primeiro é lido como texto embaralhado. Por isso o nome é tratado como conjunto de palavras. O emparelhamento é guloso - cada palavra fica com a melhor parceira ainda livre -, e não ótimo: um nome tem poucas palavras e elas são distintas entre si, então a escolha gulosa coincide com a melhor, enquanto a busca exaustiva custaria fatorial no número de palavras.
+	/// [EN] Comparing names as running text does not work for registries: a missing particle shifts the whole phrase, an abbreviated initial looks like a missing character and a surname written first reads as scrambled text. Hence the name is handled as a set of words. Pairing is greedy - each word takes the best partner still free - rather than optimal: a name has few words and they differ from each other, so the greedy choice matches the best one, while the exhaustive search would cost factorial in the number of words.
+	/// </remarks>
+	/// <param name="text">
+	/// [PT-BR] O primeiro nome.
+	/// [EN] The first name.
+	/// </param>
+	/// <param name="textToCompare">
+	/// [PT-BR] O segundo nome, a ser comparado com o primeiro.
+	/// [EN] The second name, to be compared with the first.
+	/// </param>
+	/// <param name="options">
+	/// [PT-BR] Opções do cálculo. Se nulo, as opções padrão serão usadas.
+	/// [EN] Calculation options. If null, default options will be used.
+	/// </param>
+	/// <returns>
+	/// [PT-BR] A porcentagem de similaridade, de 0 a 100. Nome vazio dos dois lados devolve 0, como GetStringSimilarityPercentage - o que a ausência significa é decisão de quem chama.
+	/// [EN] The similarity percentage, from 0 to 100. An empty name on either side returns 0, just like GetStringSimilarityPercentage - what absence means is the caller's decision.
+	/// </returns>
+	public static int GetNameSimilarityPercentage(this string? text, string? textToCompare, GCScriptNameSimilarityOptions? options = null) {
+		options ??= new GCScriptNameSimilarityOptions();
+		// Sem nenhum algoritmo ligado não há o que medir, e a média de zero elementos estoura lá dentro com uma mensagem que não diz o que falta.
+		EnsureAnyMetric(options.WordMetric, "WordMetric", nameof(options));
+		if (options.ProcessText) { text = text.ProcessText(); textToCompare = textToCompare.ProcessText(); }
+		if (text.IsNullOrWhiteSpace() || textToCompare.IsNullOrWhiteSpace()) { return 0; }
+
+		List<string> words = text.GetNameWords(options);
+		List<string> wordsToCompare = textToCompare.GetNameWords(options);
+		if (words.Count == 0 || wordsToCompare.Count == 0) { return 0; }
+
+		// Percorrer o nome mais curto e consumir do mais longo deixa como "sem par" exatamente as palavras excedentes, que é o que o desconto pune.
+		List<string> shorter = words.Count <= wordsToCompare.Count ? words : wordsToCompare;
+		List<string> available = new(words.Count <= wordsToCompare.Count ? wordsToCompare : words);
+		List<int> scores = new(shorter.Count);
+
+		foreach (string word in shorter) {
+			int best = int.MinValue;
+			int chosen = 0;
+			for (int i = 0; i < available.Count; i++) {
+				int score = ScoreNameWords(word, available[i], options);
+				if (score > best) { best = score; chosen = i; }
+			}
+			scores.Add(best);
+			available.RemoveAt(chosen);
+		}
+
+		// Trunca em vez de arredondar: o percentual é indicador de confiança, e arredondar 89,7 para 90 promoveria o par a uma faixa que a semelhança medida não alcançou.
+		double average = scores.Average() - (available.Count * options.UnpairedWordPenalty);
+		return Math.Clamp((int)Math.Floor(average), 0, 100);
+	}
+
+	/// <summary>
+	/// [PT-BR] Separa um nome nas palavras que identificam a pessoa, descartando as partículas e aplicando as substituições de palavra.
+	/// [EN] Splits a name into the words that identify the person, discarding particles and applying the word replacements.
+	/// </summary>
+	/// <param name="text">
+	/// [PT-BR] O nome de entrada.
+	/// [EN] The input name.
+	/// </param>
+	/// <param name="options">
+	/// [PT-BR] Opções do cálculo. Se nulo, as opções padrão serão usadas.
+	/// [EN] Calculation options. If null, default options will be used.
+	/// </param>
+	/// <returns>
+	/// [PT-BR] As palavras que identificam a pessoa.
+	/// [EN] The words that identify the person.
+	/// </returns>
+	public static List<string> GetNameWords(this string? text, GCScriptNameSimilarityOptions? options = null) {
+		options ??= new GCScriptNameSimilarityOptions();
+		if (options.ProcessText) { text = text.ProcessText(); }
+		if (text.IsNullOrWhiteSpace()) { return new(); }
+
+		// Lista ausente vale "nada a descartar" e dicionário ausente vale "nada a substituir": é escolha de quem chama, não contrato quebrado.
+		List<string> particles = options.Particles ?? [];
+		List<string> words = text.Split(options.Separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+								 .Where(x => !particles.Contains(x, StringComparer.Ordinal))
+								 .ToList();
+
+		// Em qualquer posição, e não só na última: "Neymar Jr da Silva" tem o sufixo de geração no meio.
+		if (options.WordReplacements is { Count: > 0 }) {
+			for (int i = 0; i < words.Count; i++) {
+				if (options.WordReplacements.TryGetValue(words[i], out string? replacement)) { words[i] = replacement; }
+			}
+		}
+		return words;
+	}
+
+	/// <summary>
+	/// [PT-BR] Pontua duas palavras já emparelhadas. Palavra de uma letra é abreviação: vale pela inicial, e não pela distância de texto.
+	/// [EN] Scores two already paired words. A single letter word is an abbreviation: it counts by its initial, not by text distance.
+	/// </summary>
+	private static int ScoreNameWords(string word, string wordToCompare, GCScriptNameSimilarityOptions options) {
+		if (word.Length == 1 || wordToCompare.Length == 1) { return word[0] == wordToCompare[0] ? options.AbbreviationScore : 0; }
+		return (int)Math.Round(word.GetStringSimilarityPercentage(wordToCompare, options.WordMetric));
 	}
 }
