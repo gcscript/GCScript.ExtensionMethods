@@ -1,9 +1,18 @@
 using System.Security.Cryptography;
 using System.Text;
+#if NETFRAMEWORK
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Engines;
+using Org.BouncyCastle.Crypto.Modes;
+using Org.BouncyCastle.Crypto.Parameters;
+#endif
 
 namespace GCScript.ExtensionMethods;
 
 public static class GCScriptCryptographyExtensions {
+	// Fixos, e não lidos de AesGcm, para o pacote ter o mesmo formato em todos os alvos: o que um cifra, o outro decifra.
+	private const int NonceSize = 12;
+	private const int TagSize = 16;
 
 	/// <summary>
 	/// [PT-BR] Criptografa o texto usando AES-GCM. Gera nonce aleatório internamente e retorna
@@ -29,18 +38,23 @@ public static class GCScriptCryptographyExtensions {
 		byte[] keyBytes = Convert.FromBase64String(key);
 		byte[] plain = Encoding.UTF8.GetBytes(text);
 
-		int nonceSize = AesGcm.NonceByteSizes.MaxSize;
-		int tagSize = AesGcm.TagByteSizes.MaxSize;
+		byte[] package = new byte[NonceSize + plain.Length + TagSize];
+		byte[] nonce = new byte[NonceSize];
+		using (var rng = RandomNumberGenerator.Create()) { rng.GetBytes(nonce); }
+		Buffer.BlockCopy(nonce, 0, package, 0, NonceSize);
 
-		byte[] package = new byte[nonceSize + plain.Length + tagSize];
-		Span<byte> nonce = package.AsSpan(0, nonceSize);
-		Span<byte> cipher = package.AsSpan(nonceSize, plain.Length);
-		Span<byte> tag = package.AsSpan(nonceSize + plain.Length, tagSize);
+#if NETFRAMEWORK
+		// O BouncyCastle devolve ciphertext + tag juntos, que é exatamente o trecho do pacote depois do nonce.
+		GcmBlockCipher gcm = CreateGcm(forEncryption: true, keyBytes, nonce);
+		int written = gcm.ProcessBytes(plain, 0, plain.Length, package, NonceSize);
+		gcm.DoFinal(package, NonceSize + written);
+#else
+		Span<byte> cipher = package.AsSpan(NonceSize, plain.Length);
+		Span<byte> tag = package.AsSpan(NonceSize + plain.Length, TagSize);
 
-		RandomNumberGenerator.Fill(nonce);
-
-		using var aes = new AesGcm(keyBytes, tagSize);
+		using var aes = new AesGcm(keyBytes, TagSize);
 		aes.Encrypt(nonce, plain, cipher, tag);
+#endif
 
 		return Convert.ToBase64String(package);
 	}
@@ -67,22 +81,47 @@ public static class GCScriptCryptographyExtensions {
 		byte[] keyBytes = Convert.FromBase64String(key);
 		byte[] package = Convert.FromBase64String(cipher);
 
-		int nonceSize = AesGcm.NonceByteSizes.MaxSize;
-		int tagSize = AesGcm.TagByteSizes.MaxSize;
-
-		if (package.Length < nonceSize + tagSize) {
+		if (package.Length < NonceSize + TagSize) {
 			throw new ArgumentException("Package is too small to contain a valid AES-GCM payload.", nameof(cipher));
 		}
 
-		int cipherLength = package.Length - nonceSize - tagSize;
-		ReadOnlySpan<byte> nonce = package.AsSpan(0, nonceSize);
-		ReadOnlySpan<byte> cipherBytes = package.AsSpan(nonceSize, cipherLength);
-		ReadOnlySpan<byte> tag = package.AsSpan(nonceSize + cipherLength, tagSize);
-
+		int cipherLength = package.Length - NonceSize - TagSize;
 		byte[] plain = new byte[cipherLength];
-		using var aes = new AesGcm(keyBytes, tagSize);
+
+#if NETFRAMEWORK
+		byte[] nonce = new byte[NonceSize];
+		Buffer.BlockCopy(package, 0, nonce, 0, NonceSize);
+
+		GcmBlockCipher gcm = CreateGcm(forEncryption: false, keyBytes, nonce);
+		try {
+			int written = gcm.ProcessBytes(package, NonceSize, cipherLength + TagSize, plain, 0);
+			gcm.DoFinal(plain, written);
+		}
+		catch (InvalidCipherTextException ex) {
+			// Mesma família de exceção do AesGcm, para quem chama tratar adulteração igual em todos os alvos.
+			throw new CryptographicException("The computed authentication tag did not match the input authentication tag.", ex);
+		}
+#else
+		ReadOnlySpan<byte> nonce = package.AsSpan(0, NonceSize);
+		ReadOnlySpan<byte> cipherBytes = package.AsSpan(NonceSize, cipherLength);
+		ReadOnlySpan<byte> tag = package.AsSpan(NonceSize + cipherLength, TagSize);
+
+		using var aes = new AesGcm(keyBytes, TagSize);
 		aes.Decrypt(nonce, cipherBytes, tag, plain);
+#endif
 
 		return Encoding.UTF8.GetString(plain);
 	}
+
+#if NETFRAMEWORK
+	private static GcmBlockCipher CreateGcm(bool forEncryption, byte[] keyBytes, byte[] nonce) {
+		// O BouncyCastle recusaria a chave com ArgumentException; o AesGcm recusa com CryptographicException, e é esse contrato que vale.
+		if (keyBytes.Length is not 16 and not 24 and not 32) {
+			throw new CryptographicException("Specified key is not a valid size for this algorithm.");
+		}
+		var gcm = new GcmBlockCipher(new AesEngine());
+		gcm.Init(forEncryption, new AeadParameters(new KeyParameter(keyBytes), TagSize * 8, nonce));
+		return gcm;
+	}
+#endif
 }

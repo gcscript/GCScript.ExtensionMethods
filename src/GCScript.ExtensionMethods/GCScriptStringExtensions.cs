@@ -449,7 +449,7 @@ public static class GCScriptStringExtensions {
 	/// [EN] The text with the order of characters reversed.
 	/// </returns>
 	public static string Reverse(this string? text) {
-		if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+		if (text.IsNullOrWhiteSpace()) return string.Empty;
 		char[] chars = text.ToCharArray();
 		Array.Reverse(chars);
 		return new string(chars);
@@ -464,11 +464,11 @@ public static class GCScriptStringExtensions {
 	public static int WordCount(this string? text) {
 		if (string.IsNullOrWhiteSpace(text)) return 0;
 		text = text.ProcessText(textType: ETextType.OnlyLettersAndNumbersAndSpaces);
-		return text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+		return text.Split([' '], StringSplitOptions.RemoveEmptyEntries).Length;
 	}
 
 	public static string SafeSubstring(this string? text, int startIndex, int length) {
-		if (string.IsNullOrWhiteSpace(text) || startIndex >= text.Length) return string.Empty;
+		if (text.IsNullOrWhiteSpace() || startIndex >= text.Length) return string.Empty;
 		if (startIndex + length > text.Length) length = text.Length - startIndex;
 		return text.Substring(startIndex, length);
 	}
@@ -771,7 +771,7 @@ public static class GCScriptStringExtensions {
 
 	public static bool IsValidUrl(this string? url) {
 		url = url?.Trim();
-		if (string.IsNullOrWhiteSpace(url)) {
+		if (url.IsNullOrWhiteSpace()) {
 			return false;
 		}
 
@@ -894,8 +894,10 @@ public static class GCScriptStringExtensions {
 			digits[..pad].Fill('0');
 		}
 
-		if (!withMask) { return new string(digits); }
-		return $"{digits[..3]}.{digits.Slice(3, 3)}.{digits.Slice(6, 3)}-{digits.Slice(9, 2)}";
+		// Span<char>.ToString() devolve o conteúdo; string(Span) e interpolação de Span não existem no .NET Framework.
+		string cpf = digits.ToString();
+		if (!withMask) { return cpf; }
+		return $"{cpf.Substring(0, 3)}.{cpf.Substring(3, 3)}.{cpf.Substring(6, 3)}-{cpf.Substring(9, 2)}";
 	}
 
 	/// <summary>
@@ -929,8 +931,9 @@ public static class GCScriptStringExtensions {
 			digits[..pad].Fill('0');
 		}
 
-		if (!withMask) { return new string(digits); }
-		return $"{digits[..2]}.{digits.Slice(2, 3)}.{digits.Slice(5, 3)}/{digits.Slice(8, 4)}-{digits.Slice(12, 2)}";
+		string cnpj = digits.ToString();
+		if (!withMask) { return cnpj; }
+		return $"{cnpj.Substring(0, 2)}.{cnpj.Substring(2, 3)}.{cnpj.Substring(5, 3)}/{cnpj.Substring(8, 4)}-{cnpj.Substring(12, 2)}";
 	}
 
 	public static ProcessNumber? ToProcessNumber(this string? processNumber) {
@@ -1212,7 +1215,7 @@ public static class GCScriptStringExtensions {
 
 		// Trunca em vez de arredondar: o percentual é indicador de confiança, e arredondar 89,7 para 90 promoveria o par a uma faixa que a semelhança medida não alcançou.
 		double average = scores.Average() - (available.Count * options.UnpairedWordPenalty);
-		return Math.Clamp((int)Math.Floor(average), 0, 100);
+		return Math.Max(0, Math.Min(100, (int)Math.Floor(average)));
 	}
 
 	/// <summary>
@@ -1238,8 +1241,10 @@ public static class GCScriptStringExtensions {
 
 		// Lista ausente vale "nada a descartar" e dicionário ausente vale "nada a substituir": é escolha de quem chama, não contrato quebrado.
 		List<string> particles = options.Particles ?? [];
-		List<string> words = text.Split(options.Separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-								 .Where(x => !particles.Contains(x, StringComparer.Ordinal))
+		// Trim + descarte do vazio à mão, no lugar de StringSplitOptions.TrimEntries, que o .NET Framework não tem.
+		List<string> words = text.Split(options.Separators, StringSplitOptions.RemoveEmptyEntries)
+								 .Select(x => x.Trim())
+								 .Where(x => x.Length > 0 && !particles.Contains(x, StringComparer.Ordinal))
 								 .ToList();
 
 		// Em qualquer posição, e não só na última: "Neymar Jr da Silva" tem o sufixo de geração no meio.

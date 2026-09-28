@@ -83,6 +83,20 @@ public class GCScriptCryptographyExtensionsTest {
 		Assert.ThrowsAny<CryptographicException>(() => tampered.AesDecrypt(key));
 	}
 
+	[Fact(DisplayName = "AES-GCM decrypts a package produced by the net8.0 build on every target")]
+	public void AesDecrypt_FixedPackage_IsCompatibleAcrossTargets() {
+		// Pacote gerado uma vez pelo alvo net8.0 (AesGcm). No net48 ele passa pelo BouncyCastle: se decifrar igual, o formato é o mesmo.
+		string key = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
+		string package = "kIGQ+dIZ1mLOGvy749gEwqXN3mcaVlC+CVfqh+Z0dQr3Cy8VL22gz0m0F50DD93TPeMp/CLp8Oa/dEc9";
+		Assert.Equal("pacote gerado no net8.0 - ação", package.AesDecrypt(key));
+	}
+
+	[Fact(DisplayName = "AES-GCM rejects a key with invalid size")]
+	public void AesEncrypt_InvalidKeySize_Throws() {
+		string key = Convert.ToBase64String(new byte[10]);
+		Assert.ThrowsAny<CryptographicException>(() => "texto".AesEncrypt(key));
+	}
+
 	[Fact(DisplayName = "AES-GCM throws when package is smaller than nonce+tag")]
 	public void AesDecrypt_PackageTooSmall_Throws() {
 		string key = GCScriptCryptography.GenerateAesKey();

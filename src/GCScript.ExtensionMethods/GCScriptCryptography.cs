@@ -20,7 +20,8 @@ public static class GCScriptCryptography {
 		if (keySize is not 128 and not 192 and not 256) {
 			throw new ArgumentOutOfRangeException(nameof(keySize), keySize, "Key size must be 128, 192 or 256 bits.");
 		}
-		byte[] key = RandomNumberGenerator.GetBytes(keySize / 8);
+		byte[] key = new byte[keySize / 8];
+		using (var rng = RandomNumberGenerator.Create()) { rng.GetBytes(key); }
 		return Convert.ToBase64String(key);
 	}
 }
