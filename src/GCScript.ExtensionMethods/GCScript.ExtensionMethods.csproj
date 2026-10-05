@@ -6,6 +6,9 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<!-- CS1591 (membro público sem comentário XML) fica desligado enquanto os membros antigos não forem documentados; os demais avisos de documentação, como tag param com nome errado, continuam valendo. -->
+		<NoWarn>$(NoWarn);CS1591</NoWarn>
 		<Authors>GCScript</Authors>
 		<Company>GCScript</Company>
 		<Copyright>GCScript</Copyright>
