@@ -96,6 +96,78 @@ public class GCScriptStringExtensionsTest
         Assert.Equal(onlyLettersNumbersSpacesExpected, onlyLettersNumbersSpacesResult);
     }
 
+    [Fact(DisplayName = "ProcessText - Filter Before Spaces")]
+    public void ShouldNotLeaveDuplicateSpacesAfterFiltering()
+    {
+        // Arrange
+        var input = "abc - 123!";
+        var expected = "ABC 123";
+
+        // Act
+        var result = input.ProcessText(textCase: ETextCase.ToUpper, textType: ETextType.OnlyLettersAndNumbersAndSpaces);
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+
+    [Fact(DisplayName = "ProcessText - Trim After Filtering")]
+    public void ShouldTrimTheSpacesLeftByTheFilter()
+    {
+        // Arrange
+        var input = "- abc -";
+        var expected = "abc";
+
+        // Act
+        var result = input.ProcessText(removeSpaces: ETextRemoveSpaces.None, textType: ETextType.OnlyLettersAndNumbersAndSpaces);
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+
+    [Fact(DisplayName = "ProcessText - Title Case Before Filtering")]
+    public void ShouldApplyTitleCaseBeforeFiltering()
+    {
+        // Arrange
+        var input = "joão-silva";
+        var expected = "JoaoSilva";
+
+        // Act
+        var result = input.ProcessText(textCase: ETextCase.ToTitleCase, textType: ETextType.OnlyLetters);
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+
+    [Fact(DisplayName = "ProcessText - Letter Filters Keep Accented Letters")]
+    public void ShouldKeepAccentedLettersWhenAccentsAreKept()
+    {
+        // Arrange
+        var input = "José Ação 1!";
+
+        // Act
+        var onlyLettersResult = input.ProcessText(removeAccents: false, textCase: ETextCase.None, textType: ETextType.OnlyLetters);
+        var onlyLettersNumbersResult = input.ProcessText(removeAccents: false, textCase: ETextCase.None, textType: ETextType.OnlyLettersAndNumbers);
+        var onlyLettersNumbersSpacesResult = input.ProcessText(removeAccents: false, textCase: ETextCase.None, textType: ETextType.OnlyLettersAndNumbersAndSpaces);
+
+        // Assert
+        Assert.Equal("JoséAção", onlyLettersResult);
+        Assert.Equal("JoséAção1", onlyLettersNumbersResult);
+        Assert.Equal("José Ação 1", onlyLettersNumbersSpacesResult);
+    }
+
+    [Fact(DisplayName = "OnlyLetters - Keeps Accents Written As Separate Marks")]
+    public void ShouldKeepCombiningAccents()
+    {
+        // Arrange
+        var input = "Jose\u0301!";
+
+        // Act
+        var result = input.OnlyLetters();
+
+        // Assert
+        Assert.Equal("Jose\u0301", result);
+    }
+
     [Fact(DisplayName = "ProcessText - Space Removal")]
     public void ShouldTestSpaceRemovalVariations()
     {

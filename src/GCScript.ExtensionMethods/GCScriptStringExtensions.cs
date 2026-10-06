@@ -56,16 +56,20 @@ public static class GCScriptStringExtensions {
 
 		if (removeAccents) { text = text.RemoveAccents(); }
 
-		switch (textTrim) {
-			case ETextTrim.Trim: { text = text.Trim(); break; }
-			case ETextTrim.TrimStart: { text = text.TrimStart(); break; }
-			case ETextTrim.TrimEnd: { text = text.TrimEnd(); break; }
-		}
-
+		// A caixa vem antes do filtro: o título de "joão-silva" enxerga o hífen como separador de palavras
 		switch (textCase) {
 			case ETextCase.ToLower: { text = text.ToLowerInvariant(); break; }
 			case ETextCase.ToUpper: { text = text.ToUpperInvariant(); break; }
 			case ETextCase.ToTitleCase: { text = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(text.ToLowerInvariant()); break; }
+		}
+
+		// O filtro vem antes dos espaços e do aparar: os caracteres que ele remove não deixam espaços duplicados
+		// no meio ("abc - 123" vira "abc 123") nem espaços nas pontas ("- abc" vira "abc")
+		switch (textType) {
+			case ETextType.OnlyLetters: { text = text.OnlyLetters(); break; }
+			case ETextType.OnlyNumbers: { text = text.OnlyNumbers(); break; }
+			case ETextType.OnlyLettersAndNumbers: { text = text.OnlyLettersAndNumbers(); break; }
+			case ETextType.OnlyLettersAndNumbersAndSpaces: { text = text.OnlyLettersAndNumbersAndSpaces(); break; }
 		}
 
 		switch (removeSpaces) {
@@ -73,11 +77,10 @@ public static class GCScriptStringExtensions {
 			case ETextRemoveSpaces.All: { text = text.RemoveAllSpaces(); break; }
 		}
 
-		switch (textType) {
-			case ETextType.OnlyLetters: { text = text.OnlyLetters(); break; }
-			case ETextType.OnlyNumbers: { text = text.OnlyNumbers(); break; }
-			case ETextType.OnlyLettersAndNumbers: { text = text.OnlyLettersAndNumbers(); break; }
-			case ETextType.OnlyLettersAndNumbersAndSpaces: { text = text.OnlyLettersAndNumbersAndSpaces(); break; }
+		switch (textTrim) {
+			case ETextTrim.Trim: { text = text.Trim(); break; }
+			case ETextTrim.TrimStart: { text = text.TrimStart(); break; }
+			case ETextTrim.TrimEnd: { text = text.TrimEnd(); break; }
 		}
 
 		return text;
@@ -195,7 +198,8 @@ public static class GCScriptStringExtensions {
 	/// </returns>
 	public static string OnlyLetters(this string? text) {
 		if (text.IsNullOrWhiteSpace()) { return string.Empty; }
-		text = Regex.Replace(text, @"[^a-zA-Z]", string.Empty);
+		// Letras de qualquer alfabeto (\p{L}) e o acento separado da letra (\p{M}): "José" continua "José", e não "Jos"
+		text = Regex.Replace(text, @"[^\p{L}\p{M}]", string.Empty);
 		return text;
 	}
 
@@ -231,7 +235,7 @@ public static class GCScriptStringExtensions {
 	/// </returns>
 	public static string OnlyLettersAndNumbers(this string? text) {
 		if (text.IsNullOrWhiteSpace()) { return string.Empty; }
-		text = Regex.Replace(text, @"[^a-zA-Z0-9]", string.Empty);
+		text = Regex.Replace(text, @"[^\p{L}\p{M}0-9]", string.Empty);
 		return text;
 	}
 
@@ -249,7 +253,7 @@ public static class GCScriptStringExtensions {
 	/// </returns>
 	public static string OnlyLettersAndNumbersAndSpaces(this string? text) {
 		if (text.IsNullOrWhiteSpace()) { return string.Empty; }
-		text = Regex.Replace(text, @"[^a-zA-Z0-9\s]", string.Empty);
+		text = Regex.Replace(text, @"[^\p{L}\p{M}0-9\s]", string.Empty);
 		return text;
 	}
 
