@@ -1191,35 +1191,51 @@ public static class GCScriptStringExtensions {
 	/// [EN] The similarity percentage, from 0 to 100. An empty name on either side returns 0, just like GetStringSimilarityPercentage - what absence means is the caller's decision.
 	/// </returns>
 	public static int GetNameSimilarityPercentage(this string? text, string? textToCompare, GCScriptNameSimilarityOptions? options = null) {
+		return text.GetNameSimilarity(textToCompare, options).Percentage;
+	}
+
+	/// <summary>
+	/// [PT-BR] Compara dois nomes de pessoa como GetNameSimilarityPercentage e devolve, além do percentual, o emparelhamento que o produziu.
+	/// [EN] Compares two person names like GetNameSimilarityPercentage and returns, besides the percentage, the pairing that produced it.
+	/// </summary>
+	/// <remarks>
+	/// [PT-BR] Serve para explicar o percentual: cada palavra traz a posição no nome comparado, a parceira, a pontuação do par e se casou pela inicial; a que sobrou não tem parceira. GetNameSimilarityPercentage devolve o Percentage deste método, então os dois nunca divergem.
+	/// [EN] It serves to explain the percentage: each word carries its position in the compared name, its partner, the pair score and whether it matched by the initial; a leftover word has no partner. GetNameSimilarityPercentage returns this method's Percentage, so the two never diverge.
+	/// </remarks>
+	/// <param name="text">
+	/// [PT-BR] O primeiro nome.
+	/// [EN] The first name.
+	/// </param>
+	/// <param name="textToCompare">
+	/// [PT-BR] O segundo nome, a ser comparado com o primeiro.
+	/// [EN] The second name, to be compared with the first.
+	/// </param>
+	/// <param name="options">
+	/// [PT-BR] Opções do cálculo. Se nulo, as opções padrão serão usadas.
+	/// [EN] Calculation options. If null, default options will be used.
+	/// </param>
+	/// <returns>
+	/// [PT-BR] O percentual e as palavras de cada nome. Com um dos nomes vazio, o percentual é 0 e as palavras do outro ficam sem parceira.
+	/// [EN] The percentage and each name's words. With either name empty, the percentage is 0 and the other name's words have no partner.
+	/// </returns>
+	public static GCScriptNameSimilarityResult GetNameSimilarity(this string? text, string? textToCompare, GCScriptNameSimilarityOptions? options = null) {
 		options ??= new GCScriptNameSimilarityOptions();
 		// Sem nenhum algoritmo ligado não há o que medir, e a média de zero elementos estoura lá dentro com uma mensagem que não diz o que falta.
 		EnsureAnyMetric(options.WordMetric, "WordMetric", nameof(options));
 		if (options.ProcessText) { text = text.ProcessText(); textToCompare = textToCompare.ProcessText(); }
-		if (text.IsNullOrWhiteSpace() || textToCompare.IsNullOrWhiteSpace()) { return 0; }
+		string comparedText = text ?? string.Empty;
+		string comparedTextToCompare = textToCompare ?? string.Empty;
 
-		List<string> words = text.GetNameWords(options);
-		List<string> wordsToCompare = textToCompare.GetNameWords(options);
-		if (words.Count == 0 || wordsToCompare.Count == 0) { return 0; }
+		List<NameToken> tokens = GetNameTokens(comparedText, options);
+		List<NameToken> tokensToCompare = GetNameTokens(comparedTextToCompare, options);
+		(NamePair?[] pairs, NamePair?[] pairsToCompare) = PairNameWords(tokens, tokensToCompare, options);
 
-		// Percorrer o nome mais curto e consumir do mais longo deixa como "sem par" exatamente as palavras excedentes, que é o que o desconto pune.
-		List<string> shorter = words.Count <= wordsToCompare.Count ? words : wordsToCompare;
-		List<string> available = new(words.Count <= wordsToCompare.Count ? wordsToCompare : words);
-		List<int> scores = new(shorter.Count);
-
-		foreach (string word in shorter) {
-			int best = int.MinValue;
-			int chosen = 0;
-			for (int i = 0; i < available.Count; i++) {
-				int score = ScoreNameWords(word, available[i], options);
-				if (score > best) { best = score; chosen = i; }
-			}
-			scores.Add(best);
-			available.RemoveAt(chosen);
-		}
-
-		// Trunca em vez de arredondar: o percentual é indicador de confiança, e arredondar 89,7 para 90 promoveria o par a uma faixa que a semelhança medida não alcançou.
-		double average = scores.Average() - (available.Count * options.UnpairedWordPenalty);
-		return Math.Max(0, Math.Min(100, (int)Math.Floor(average)));
+		return new GCScriptNameSimilarityResult(
+			CalculateNameSimilarityPercentage(pairs, pairsToCompare, options),
+			comparedText,
+			comparedTextToCompare,
+			ToNameWords(tokens, pairs).AsReadOnly(),
+			ToNameWords(tokensToCompare, pairsToCompare).AsReadOnly());
 	}
 
 	/// <summary>
@@ -1241,31 +1257,133 @@ public static class GCScriptStringExtensions {
 	public static List<string> GetNameWords(this string? text, GCScriptNameSimilarityOptions? options = null) {
 		options ??= new GCScriptNameSimilarityOptions();
 		if (options.ProcessText) { text = text.ProcessText(); }
-		if (text.IsNullOrWhiteSpace()) { return new(); }
+		return GetNameTokens(text ?? string.Empty, options).Select(token => token.Value).ToList();
+	}
 
+	/// <summary>
+	/// [PT-BR] Uma palavra do nome: o valor comparado e o trecho do texto de onde ela saiu.
+	/// [EN] A name word: the compared value and the stretch of text it came from.
+	/// </summary>
+	private readonly struct NameToken {
+		public NameToken(string value, int start, int length) { Value = value; Start = start; Length = length; }
+		public string Value { get; }
+		public int Start { get; }
+		public int Length { get; }
+	}
+
+	/// <summary>
+	/// [PT-BR] O par que uma palavra recebeu: o índice da parceira no outro nome, a pontuação e se casou pela inicial.
+	/// [EN] The pair a word got: the partner index in the other name, the score and whether it matched by the initial.
+	/// </summary>
+	private readonly struct NamePair {
+		public NamePair(int partnerIndex, int score, bool isAbbreviation) { PartnerIndex = partnerIndex; Score = score; IsAbbreviation = isAbbreviation; }
+		public int PartnerIndex { get; }
+		public int Score { get; }
+		public bool IsAbbreviation { get; }
+	}
+
+	/// <summary>
+	/// [PT-BR] Separa o nome nas palavras que identificam a pessoa, guardando de onde cada uma saiu.
+	/// [EN] Splits the name into the words that identify the person, keeping where each one came from.
+	/// </summary>
+	/// <remarks>
+	/// [PT-BR] Percorre o texto à mão, no lugar de Split, porque Split perde a posição - e a posição é o que permite destacar a palavra no nome. Separadores ausentes valem espaço em branco, como em Split.
+	/// [EN] Walks the text by hand, instead of Split, because Split loses the position - and the position is what allows highlighting the word in the name. Absent separators mean white space, as in Split.
+	/// </remarks>
+	private static List<NameToken> GetNameTokens(string text, GCScriptNameSimilarityOptions options) {
 		// Lista ausente vale "nada a descartar" e dicionário ausente vale "nada a substituir": é escolha de quem chama, não contrato quebrado.
 		List<string> particles = options.Particles ?? [];
-		// Trim + descarte do vazio à mão, no lugar de StringSplitOptions.TrimEntries, que o .NET Framework não tem.
-		List<string> words = text.Split(options.Separators, StringSplitOptions.RemoveEmptyEntries)
-								 .Select(x => x.Trim())
-								 .Where(x => x.Length > 0 && !particles.Contains(x, StringComparer.Ordinal))
-								 .ToList();
+		char[]? separators = options.Separators is { Length: > 0 } ? options.Separators : null;
+		List<NameToken> tokens = new();
+		int pieceStart = 0;
 
-		// Em qualquer posição, e não só na última: "Neymar Jr da Silva" tem o sufixo de geração no meio.
-		if (options.WordReplacements is { Count: > 0 }) {
-			for (int i = 0; i < words.Count; i++) {
-				if (options.WordReplacements.TryGetValue(words[i], out string? replacement)) { words[i] = replacement; }
-			}
+		for (int i = 0; i <= text.Length; i++) {
+			bool endOfPiece = i == text.Length || (separators is null ? char.IsWhiteSpace(text[i]) : Array.IndexOf(separators, text[i]) >= 0);
+			if (!endOfPiece) { continue; }
+
+			int start = pieceStart;
+			int end = i;
+			while (start < end && char.IsWhiteSpace(text[start])) { start++; }
+			while (end > start && char.IsWhiteSpace(text[end - 1])) { end--; }
+			pieceStart = i + 1;
+			if (start == end) { continue; }
+
+			string word = text.Substring(start, end - start);
+			if (particles.Contains(word, StringComparer.Ordinal)) { continue; }
+
+			// Em qualquer posição, e não só na última: "Neymar Jr da Silva" tem o sufixo de geração no meio.
+			string value = options.WordReplacements is { Count: > 0 } && options.WordReplacements.TryGetValue(word, out string? replacement) ? replacement : word;
+			tokens.Add(new NameToken(value, start, end - start));
 		}
-		return words;
+		return tokens;
+	}
+
+	/// <summary>
+	/// [PT-BR] Emparelha as palavras dos dois nomes: cada palavra do nome mais curto fica com a melhor parceira ainda livre no mais longo.
+	/// [EN] Pairs the words of both names: each word of the shorter name takes the best partner still free in the longer one.
+	/// </summary>
+	/// <remarks>
+	/// [PT-BR] Percorrer o nome mais curto e consumir do mais longo deixa como "sem par" exatamente as palavras excedentes, que é o que o desconto pune.
+	/// [EN] Walking the shorter name and consuming from the longer one leaves as "unpaired" exactly the surplus words, which is what the penalty punishes.
+	/// </remarks>
+	private static (NamePair?[] Pairs, NamePair?[] PairsToCompare) PairNameWords(List<NameToken> tokens, List<NameToken> tokensToCompare, GCScriptNameSimilarityOptions options) {
+		NamePair?[] pairs = new NamePair?[tokens.Count];
+		NamePair?[] pairsToCompare = new NamePair?[tokensToCompare.Count];
+		bool firstIsShorter = tokens.Count <= tokensToCompare.Count;
+		List<NameToken> shorter = firstIsShorter ? tokens : tokensToCompare;
+		List<NameToken> longer = firstIsShorter ? tokensToCompare : tokens;
+		NamePair?[] shorterPairs = firstIsShorter ? pairs : pairsToCompare;
+		NamePair?[] longerPairs = firstIsShorter ? pairsToCompare : pairs;
+		List<int> available = Enumerable.Range(0, longer.Count).ToList();
+
+		for (int s = 0; s < shorter.Count; s++) {
+			int best = int.MinValue;
+			int chosen = 0;
+			bool chosenIsAbbreviation = false;
+			for (int i = 0; i < available.Count; i++) {
+				(int score, bool isAbbreviation) = ScoreNameWords(shorter[s].Value, longer[available[i]].Value, options);
+				if (score > best) { best = score; chosen = i; chosenIsAbbreviation = isAbbreviation; }
+			}
+			int partner = available[chosen];
+			shorterPairs[s] = new NamePair(partner, best, chosenIsAbbreviation);
+			longerPairs[partner] = new NamePair(s, best, chosenIsAbbreviation);
+			available.RemoveAt(chosen);
+		}
+		return (pairs, pairsToCompare);
+	}
+
+	/// <summary>
+	/// [PT-BR] Média das pontuações dos pares, menos o desconto por palavra sem par. Um nome sem palavras dá 0.
+	/// [EN] Average of the pair scores, minus the penalty per unpaired word. A name with no words gives 0.
+	/// </summary>
+	private static int CalculateNameSimilarityPercentage(NamePair?[] pairs, NamePair?[] pairsToCompare, GCScriptNameSimilarityOptions options) {
+		if (pairs.Length == 0 || pairsToCompare.Length == 0) { return 0; }
+
+		// Cada par aparece nos dois lados; contar só um deles mantém uma pontuação por par.
+		double averageScore = pairs.OfType<NamePair>().Average(pair => pair.Score);
+		int unpaired = pairs.Count(pair => pair is null) + pairsToCompare.Count(pair => pair is null);
+
+		// Trunca em vez de arredondar: o percentual é indicador de confiança, e arredondar 89,7 para 90 promoveria o par a uma faixa que a semelhança medida não alcançou.
+		double average = averageScore - (unpaired * options.UnpairedWordPenalty);
+		return Math.Max(0, Math.Min(100, (int)Math.Floor(average)));
+	}
+
+	private static List<GCScriptNameWord> ToNameWords(List<NameToken> tokens, NamePair?[] pairs) {
+		return tokens.Select((token, i) => new GCScriptNameWord(
+			token.Value,
+			token.Start,
+			token.Length,
+			pairs[i]?.PartnerIndex,
+			pairs[i]?.Score,
+			pairs[i]?.IsAbbreviation ?? false)).ToList();
 	}
 
 	/// <summary>
 	/// [PT-BR] Pontua duas palavras já emparelhadas. Palavra de uma letra é abreviação: vale pela inicial, e não pela distância de texto.
 	/// [EN] Scores two already paired words. A single letter word is an abbreviation: it counts by its initial, not by text distance.
 	/// </summary>
-	private static int ScoreNameWords(string word, string wordToCompare, GCScriptNameSimilarityOptions options) {
-		if (word.Length == 1 || wordToCompare.Length == 1) { return word[0] == wordToCompare[0] ? options.AbbreviationScore : 0; }
-		return (int)Math.Round(word.GetStringSimilarityPercentage(wordToCompare, options.WordMetric));
+	private static (int Score, bool IsAbbreviation) ScoreNameWords(string word, string wordToCompare, GCScriptNameSimilarityOptions options) {
+		if (word.Length == 1 || wordToCompare.Length == 1) { return word[0] == wordToCompare[0] ? (options.AbbreviationScore, true) : (0, false); }
+		return ((int)Math.Round(word.GetStringSimilarityPercentage(wordToCompare, options.WordMetric)), false);
 	}
 }
