@@ -397,4 +397,50 @@ public class GCScriptStringExtensionsTest
     {
         Assert.Equal(string.Empty, input.Reverse());
     }
+
+    [Theory(DisplayName = "ToProcessNumber - Accepts Every Court In The CNJ Table")]
+    [InlineData("0001234-56.2020.1.00.0000")] // STF
+    [InlineData("0001234-56.2020.2.00.0000")] // CNJ
+    [InlineData("0339525-48.2026.3.00.0000")] // STJ
+    [InlineData("0001234-56.2020.4.90.0000")] // CJF
+    [InlineData("0001234-56.2020.4.06.3800")] // TRF6
+    [InlineData("0001234-56.2020.5.00.0000")] // TST
+    [InlineData("0001234-56.2020.5.90.0000")] // CSJT
+    [InlineData("0001234-56.2020.5.24.0001")] // TRT24
+    [InlineData("0001234-56.2020.6.00.0000")] // TSE
+    [InlineData("0001234-56.2020.6.27.0001")] // TRE-TO
+    [InlineData("0001234-56.2020.7.00.0000")] // STM
+    [InlineData("0001234-56.2020.7.12.0012")] // 12ª CJM
+    [InlineData("1002351-81.2026.8.26.0271")] // TJSP
+    [InlineData("0001234-56.2020.9.26.0001")] // TJM-SP
+    public void ShouldAcceptProcessNumberFromAnyCnjCourt(string input)
+    {
+        // Act
+        var result = input.ToProcessNumber();
+
+        // Assert
+        Assert.Equal(input, result?.FullFormatted);
+    }
+
+    [Theory(DisplayName = "ToProcessNumber - Rejects Courts Outside The CNJ Table")]
+    [InlineData("0001234-56.2020.0.00.0000")] // J 0 não existe
+    [InlineData("0001234-56.2020.3.01.0000")] // STJ só tem TR 00
+    [InlineData("0001234-56.2020.4.07.0000")] // não há TRF7
+    [InlineData("0001234-56.2020.5.25.0000")] // não há TRT25
+    [InlineData("0001234-56.2020.7.13.0000")] // só há 12 CJMs
+    [InlineData("0001234-56.2020.8.00.0000")] // TJ sem UF
+    [InlineData("0001234-56.2020.8.28.0000")] // não há UF 28
+    [InlineData("0001234-56.2020.9.01.0000")] // não há TJM no AC
+    public void ShouldRejectProcessNumberFromUnknownCourt(string input)
+    {
+        Assert.Null(input.ToProcessNumber());
+    }
+
+    [Theory(DisplayName = "ToProcessNumber - Rejects Invalid Year Or Length")]
+    [InlineData("0086388-65.1300.8.26.0090")] // ano antes de 1900
+    [InlineData("0528474-42.2019.8.05.0001R1")] // sufixo vira o 21º dígito
+    public void ShouldRejectProcessNumberWithInvalidYearOrLength(string input)
+    {
+        Assert.Null(input.ToProcessNumber());
+    }
 }

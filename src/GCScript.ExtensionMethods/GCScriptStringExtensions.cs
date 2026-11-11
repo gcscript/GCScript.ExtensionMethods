@@ -940,6 +940,36 @@ public static class GCScriptStringExtensions {
 		return $"{cnpj.Substring(0, 2)}.{cnpj.Substring(2, 3)}.{cnpj.Substring(5, 3)}/{cnpj.Substring(8, 4)}-{cnpj.Substring(12, 2)}";
 	}
 
+	// Segmento J.TR do CNJ (Resolução CNJ 65/2008): J é o órgão ou ramo do Judiciário e TR, o tribunal dentro dele.
+	// Tribunais superiores e conselhos usam TR 00, exceto CJF e CSJT, que usam 90.
+	private static readonly HashSet<string> ValidCourts = CreateValidCourts();
+
+	private static HashSet<string> CreateValidCourts() {
+		var courts = new HashSet<string> {
+			"1.00", // STF
+			"2.00", // CNJ
+			"3.00", // STJ
+			"4.90", // CJF
+			"5.00", // TST
+			"5.90", // CSJT
+			"6.00", // TSE
+			"7.00", // STM
+			"9.13", // TJM-MG
+			"9.21", // TJM-RS
+			"9.26", // TJM-SP
+		};
+		AddCourts(courts, "4", 6); // TRFs, por região
+		AddCourts(courts, "5", 24); // TRTs, por região
+		AddCourts(courts, "6", 27); // TREs, por UF
+		AddCourts(courts, "7", 12); // Circunscrições Judiciárias Militares
+		AddCourts(courts, "8", 27); // TJs, por UF
+		return courts;
+	}
+
+	private static void AddCourts(HashSet<string> courts, string agency, int lastCourt) {
+		for (int court = 1; court <= lastCourt; court++) { courts.Add($"{agency}.{court:00}"); }
+	}
+
 	public static ProcessNumber? ToProcessNumber(this string? processNumber) {
 		try {
 			if (string.IsNullOrWhiteSpace(processNumber)) { return null; }
@@ -957,66 +987,7 @@ public static class GCScriptStringExtensions {
 
 			if (!int.TryParse(year, out int yearInt) || yearInt < 1900 || yearInt > DateTime.Now.Year + 1) { return null; }
 
-			HashSet<string> validCourts = new HashSet<string>{
-					"4.01", // AC | AM | AP | BA | DF | GO | MA | MT | PA | PI | RO | RR | TO
-					"4.02", // ES | RJ
-					"4.03", // MS | SP
-					"4.04", // PR | RS | SC
-					"4.05", // AL | CE | PB | PE | RN | SE
-					"4.06", // MG
-					"5.01", // RJ
-					"5.02", // SP
-					"5.03", // MG
-					"5.04", // RS
-					"5.05", // BA
-					"5.06", // PE
-					"5.07", // CE
-					"5.08", // AP | PA
-					"5.09", // PR
-					"5.10", // DF | TO
-					"5.11", // AM | RR
-					"5.12", // SC
-					"5.13", // PB
-					"5.14", // AC | RO
-					"5.15", // SP
-					"5.16", // MA
-					"5.17", // ES
-					"5.18", // GO
-					"5.19", // AL
-					"5.20", // SE
-					"5.21", // RN
-					"5.22", // PI
-					"5.23", // MT
-					"5.24", // MS
-					"8.01", // AC
-					"8.02", // AL
-					"8.03", // AP
-					"8.04", // AM
-					"8.05", // BA
-					"8.06", // CE
-					"8.07", // DF
-					"8.08", // ES
-					"8.09", // GO
-					"8.10", // MA
-					"8.11", // MT
-					"8.12", // MS
-					"8.13", // MG
-					"8.14", // PA
-					"8.15", // PB
-					"8.16", // PR
-					"8.17", // PE
-					"8.18", // PI
-					"8.19", // RJ
-					"8.20", // RN
-					"8.21", // RS
-					"8.22", // RO
-					"8.23", // RR
-					"8.24", // SC
-					"8.25", // SP
-					"8.26", // SE
-					"8.27", // TO
-				};
-			if (!validCourts.Contains($"{agency}.{court}")) { return null; }
+			if (!ValidCourts.Contains($"{agency}.{court}")) { return null; }
 
 			return new ProcessNumber() {
 				Number = number,
