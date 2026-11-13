@@ -41,4 +41,39 @@ public class GCScriptNumberExtensionsTest {
 		Assert.False(text.TryParseBrazilianNumber(out decimal number));
 		Assert.Equal(0m, number);
 	}
+
+	[Theory]
+	[InlineData("R$13,40", "13.40")]
+	[InlineData("R$ 1.234,56", "1234.56")]
+	[InlineData("R$ 13,40", "13.40")]  // espaço rígido, comum no formato de moeda copiado
+	[InlineData("-R$ 13,40", "-13.40")]
+	[InlineData("R$ -13,40", "-13.40")]
+	[InlineData("13,40 reais", "13.40")]
+	[InlineData("1.234,56", "1234.56")]
+	[InlineData("+7", "7")]
+	[InlineData("1 234", "1234")]
+	[InlineData("Pedido 123", "123")]       // amplo de propósito
+	[InlineData("(13,40)", "13.40")]        // sem o sinal
+	[InlineData("13,40%", "13.40")]         // sem a escala
+	public void TryExtractBrazilianNumber_ValidValues(string text, string expected) {
+		Assert.True(text.TryExtractBrazilianNumber(out decimal number));
+		Assert.Equal(decimal.Parse(expected, CultureInfo.InvariantCulture), number);
+	}
+
+	[Theory]
+	[InlineData("R$")]
+	[InlineData("SEM VALOR")]
+	[InlineData("R$ 10.5")]     // o que sobra continua estrito
+	[InlineData("R$ 1,234,56")]
+	[InlineData("13,40-")]
+	[InlineData("10-20")]
+	[InlineData("R$ -")]
+	[InlineData("")]
+	[InlineData("   ")]
+	[InlineData(null)]
+	[InlineData("١٢")]          // dígitos árabes
+	public void TryExtractBrazilianNumber_InvalidValues(string? text) {
+		Assert.False(text.TryExtractBrazilianNumber(out decimal number));
+		Assert.Equal(0m, number);
+	}
 }

@@ -15,6 +15,12 @@ public static class GCScriptNumberExtensions {
 	private static readonly Regex BrazilianNumberPattern = new(@"^[+-]?(?:[0-9]{1,3}(?:\.[0-9]{3})+|[0-9]+)?(?:,[0-9]+)?$", RegexOptions.CultureInvariant);
 
 	/// <summary>
+	/// [PT-BR] Tudo o que não é dígito, ponto, vírgula ou sinal de menos.
+	/// [EN] Everything that is not a digit, dot, comma or minus sign.
+	/// </summary>
+	private static readonly Regex NonNumberCharacters = new(@"[^0-9.,\-]", RegexOptions.CultureInvariant);
+
+	/// <summary>
 	/// [PT-BR] Lê um número escrito no padrão brasileiro: vírgula decimal e ponto de milhar ("1.234,56", "1234,56", "1.234", "-0,5", ",5").
 	/// [EN] Reads a number written in the Brazilian format: decimal comma and thousands dot ("1.234,56", "1234,56", "1.234", "-0,5", ",5").
 	/// </summary>
@@ -46,5 +52,32 @@ public static class GCScriptNumberExtensions {
 		// Já validado: sem os pontos de milhar e com ponto decimal, o texto é lido na cultura invariante
 		string invariant = trimmed.Replace(".", string.Empty).Replace(',', '.');
 		return decimal.TryParse(invariant, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out number);
+	}
+
+	/// <summary>
+	/// [PT-BR] Extrai um número no padrão brasileiro de um texto com outros caracteres ("R$ 1.234,56", "-R$ 13,40", "13,40 reais"): remove tudo o que não é dígito, ponto, vírgula ou sinal de menos e lê o resto com TryParseBrazilianNumber.
+	/// [EN] Extracts a number in the Brazilian format from a text with other characters ("R$ 1.234,56", "-R$ 13,40", "13,40 reais"): removes everything that is not a digit, dot, comma or minus sign and reads the rest with TryParseBrazilianNumber.
+	/// </summary>
+	/// <remarks>
+	/// [PT-BR] Amplo de propósito: qualquer texto com dígitos pode virar número ("Pedido 123" vira 123). Parênteses e porcentagem são removidos como os demais caracteres: "(13,40)" vira 13,40, sem o sinal, e "13,40%" vira 13,40, sem a escala. O que sobra continua estrito: "10.5", "13,40-" e "10-20" não são reconhecidos. Para aceitar só o número, use TryParseBrazilianNumber.
+	/// [EN] Broad on purpose: any text with digits may become a number ("Pedido 123" becomes 123). Parentheses and percent signs are removed like any other character: "(13,40)" becomes 13.40, without the sign, and "13,40%" becomes 13.40, without the scale. What is left is still strict: "10.5", "13,40-" and "10-20" are not recognized. To accept only the number, use TryParseBrazilianNumber.
+	/// </remarks>
+	/// <param name="text">
+	/// [PT-BR] O texto com o número.
+	/// [EN] The text with the number.
+	/// </param>
+	/// <param name="number">
+	/// [PT-BR] O número extraído, ou 0 quando não há um número no padrão brasileiro.
+	/// [EN] The extracted number, or 0 when there is no number in the Brazilian format.
+	/// </param>
+	/// <returns>
+	/// [PT-BR] true se, sem os outros caracteres, o texto é um número no padrão brasileiro que cabe em decimal; caso contrário, false.
+	/// [EN] true if, without the other characters, the text is a number in the Brazilian format that fits in a decimal; otherwise, false.
+	/// </returns>
+	public static bool TryExtractBrazilianNumber(this string? text, out decimal number) {
+		number = 0;
+		if (text.IsNullOrWhiteSpace()) { return false; }
+
+		return NonNumberCharacters.Replace(text, string.Empty).TryParseBrazilianNumber(out number);
 	}
 }
