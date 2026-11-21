@@ -830,42 +830,66 @@ public static class GCScriptStringExtensions {
 	}
 
 	/// <summary>
-	/// [PT-BR] Valida um CNPJ brasileiro (módulo 11 com pesos, rejeita dígitos repetidos). Aceita com ou sem máscara.
-	/// [EN] Validate a Brazilian CNPJ (weighted modulo 11). Accepts masked or unmasked input.
+	/// [PT-BR] Valida um CNPJ brasileiro, numérico ou alfanumérico (módulo 11 com pesos, rejeita caracteres repetidos). Aceita com ou sem máscara e letras minúsculas.
+	/// [EN] Validate a Brazilian CNPJ, numeric or alphanumeric (weighted modulo 11). Accepts masked or unmasked input and lowercase letters.
 	/// </summary>
+	/// <remarks>
+	/// No CNPJ alfanumérico (Receita Federal, emitido desde julho de 2026), os 12 primeiros caracteres são letras
+	/// ou dígitos e os 2 verificadores continuam numéricos. Cada caractere vale o código ASCII menos 48 (A = 17,
+	/// Z = 42), com os mesmos pesos do CNPJ numérico, que continua valendo como antes.
+	/// </remarks>
 	public static bool IsValidCnpj(this string? value) {
-		if (string.IsNullOrWhiteSpace(value)) { return false; }
-		value = value.OnlyNumbers().PadLeft(14, '0');
-		if (value == "00000000000000") { return false; }
+		Span<char> cnpj = stackalloc char[14];
+		if (!TryExtractCnpj(value, cnpj)) { return false; }
+
+		bool identical = true;
+		for (int i = 1; i < 14; i++) {
+			if (cnpj[i] != cnpj[0]) { identical = false; break; }
+		}
+		if (identical) { return false; }
 
 		ReadOnlySpan<byte> m1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
 		ReadOnlySpan<byte> m2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
 
-		Span<int> digits = stackalloc int[14];
-		int count = 0;
-		bool identical = true;
-		int first = -1;
-		foreach (var c in value) {
-			if (!char.IsDigit(c)) { continue; }
-			if (count >= 14) { return false; }
-			int d = c - '0';
-			if (first < 0) { first = d; }
-			else if (d != first) { identical = false; }
-			digits[count++] = d;
-		}
-		if (count != 14 || identical) { return false; }
-
 		int sum1 = 0, sum2 = 0;
 		for (int i = 0; i < 12; i++) {
-			sum1 += digits[i] * m1[i];
-			sum2 += digits[i] * m2[i];
+			int valor = cnpj[i] - '0';
+			sum1 += valor * m1[i];
+			sum2 += valor * m2[i];
 		}
 		int dv1 = sum1 % 11; dv1 = dv1 < 2 ? 0 : 11 - dv1;
-		if (digits[12] != dv1) { return false; }
+		if (cnpj[12] - '0' != dv1) { return false; }
 		sum2 += dv1 * m2[12];
 		int dv2 = sum2 % 11; dv2 = dv2 < 2 ? 0 : 11 - dv2;
-		return digits[13] == dv2;
+		return cnpj[13] - '0' == dv2;
 	}
+
+	/// <summary>
+	/// Extrai os 14 caracteres do CNPJ (letras e dígitos ASCII, letras em maiúsculas), completando com zeros à
+	/// esquerda e ignorando a máscara. Falso quando não há nenhum, quando passam de 14 ou quando os verificadores
+	/// (as 2 últimas posições) não são dígitos.
+	/// </summary>
+	private static bool TryExtractCnpj(string? value, Span<char> cnpj) {
+		if (string.IsNullOrWhiteSpace(value)) { return false; }
+
+		int count = 0;
+		foreach (var c in value!) {
+			char upper = char.ToUpperInvariant(c);
+			if (!IsAsciiDigit(upper) && (upper < 'A' || upper > 'Z')) { continue; }
+			if (count >= 14) { return false; }
+			cnpj[count++] = upper;
+		}
+		if (count == 0) { return false; }
+		if (count < 14) {
+			int pad = 14 - count;
+			cnpj[..count].CopyTo(cnpj[pad..]);
+			cnpj[..pad].Fill('0');
+		}
+
+		return IsAsciiDigit(cnpj[12]) && IsAsciiDigit(cnpj[13]);
+	}
+
+	private static bool IsAsciiDigit(char c) => c >= '0' && c <= '9';
 
 	/// <summary>
 	/// [PT-BR] Formata a string como CPF sem máscara, retornando apenas os 11 dígitos (preenche com zeros à esquerda se necessário).
@@ -905,37 +929,23 @@ public static class GCScriptStringExtensions {
 	}
 
 	/// <summary>
-	/// [PT-BR] Formata a string como CNPJ sem máscara, retornando apenas os 14 dígitos (preenche com zeros à esquerda se necessário).
-	/// [EN] Formats the string as an unmasked CNPJ, returning only the 14 digits (pads with leading zeros if needed).
+	/// [PT-BR] Formata a string como CNPJ sem máscara, retornando os 14 caracteres, com as letras do CNPJ alfanumérico em maiúsculas (preenche com zeros à esquerda se necessário). Vazio se não for um CNPJ no formato.
+	/// [EN] Formats the string as an unmasked CNPJ, returning the 14 characters, with alphanumeric CNPJ letters in uppercase (pads with leading zeros if needed). Empty if it does not fit the format.
 	/// </summary>
 	public static string ToCnpj(this string? value) => FormatCnpj(value, withMask: false);
 
 	/// <summary>
-	/// [PT-BR] Formata a string como CNPJ com máscara no formato ##.###.###/####-## (preenche com zeros à esquerda se necessário).
-	/// [EN] Formats the string as a masked CNPJ in the format ##.###.###/####-## (pads with leading zeros if needed).
+	/// [PT-BR] Formata a string como CNPJ com máscara no formato ##.###.###/####-##, numérico ou alfanumérico (preenche com zeros à esquerda se necessário). Vazio se não for um CNPJ no formato.
+	/// [EN] Formats the string as a masked CNPJ in the format ##.###.###/####-##, numeric or alphanumeric (pads with leading zeros if needed). Empty if it does not fit the format.
 	/// </summary>
 	public static string ToCnpjWithMask(this string? value) => FormatCnpj(value, withMask: true);
 
 	private static string FormatCnpj(string? value, bool withMask) {
-		if (string.IsNullOrWhiteSpace(value)) { return string.Empty; }
-		value = value.OnlyNumbers().PadLeft(14, '0');
-		if (value == "00000000000000") { return string.Empty; }
-
 		Span<char> digits = stackalloc char[14];
-		int count = 0;
-		foreach (var c in value) {
-			if (!char.IsDigit(c)) { continue; }
-			if (count >= 14) { return string.Empty; }
-			digits[count++] = c;
-		}
-		if (count == 0) { return string.Empty; }
-		if (count < 14) {
-			int pad = 14 - count;
-			digits[..count].CopyTo(digits[pad..]);
-			digits[..pad].Fill('0');
-		}
+		if (!TryExtractCnpj(value, digits)) { return string.Empty; }
 
 		string cnpj = digits.ToString();
+		if (cnpj == "00000000000000") { return string.Empty; }
 		if (!withMask) { return cnpj; }
 		return $"{cnpj.Substring(0, 2)}.{cnpj.Substring(2, 3)}.{cnpj.Substring(5, 3)}/{cnpj.Substring(8, 4)}-{cnpj.Substring(12, 2)}";
 	}

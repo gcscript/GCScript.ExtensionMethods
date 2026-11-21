@@ -27,6 +27,9 @@ public class GCScriptCpfCnpjExtensionsTest {
 	[InlineData("11.222.333/0001-81")]
 	[InlineData("11222333000181")]
 	[InlineData("04.252.011/0001-10")]
+	[InlineData("12.ABC.345/01DE-35")]
+	[InlineData("12ABC34501DE35")]
+	[InlineData("12abc34501de35")]
 	public void IsValidCNPJ_ValidValues(string value)
 		=> Assert.True(value.IsValidCnpj());
 
@@ -37,6 +40,10 @@ public class GCScriptCpfCnpjExtensionsTest {
 	[InlineData("11111111111111")]
 	[InlineData("123")]
 	[InlineData("123456789012345")]
+	[InlineData("12ABC34501DE36")]
+	[InlineData("12ABC34501DE3A")]
+	[InlineData("12ABC34501DE355")]
+	[InlineData("CNPJ 11.222.333/0001-81")]
 	[InlineData("")]
 	[InlineData("   ")]
 	[InlineData(null)]
@@ -69,6 +76,8 @@ public class GCScriptCpfCnpjExtensionsTest {
 	[InlineData("11.222.333/0001-81", "11222333000181")]
 	[InlineData("11222333000181", "11222333000181")]
 	[InlineData("1", "00000000000001")]
+	[InlineData("12.ABC.345/01DE-35", "12ABC34501DE35")]
+	[InlineData("12abc34501de35", "12ABC34501DE35")]
 	public void ToCNPJ_FormatsWithoutMask(string input, string expected)
 		=> Assert.Equal(expected, input.ToCnpj());
 
@@ -76,6 +85,7 @@ public class GCScriptCpfCnpjExtensionsTest {
 	[InlineData("11222333000181", "11.222.333/0001-81")]
 	[InlineData("11.222.333/0001-81", "11.222.333/0001-81")]
 	[InlineData("1", "00.000.000/0000-01")]
+	[InlineData("12ABC34501DE35", "12.ABC.345/01DE-35")]
 	public void ToCNPJ_FormatsWithMask(string input, string expected)
 		=> Assert.Equal(expected, input.ToCnpjWithMask());
 
@@ -84,6 +94,8 @@ public class GCScriptCpfCnpjExtensionsTest {
 	[InlineData("")]
 	[InlineData("   ")]
 	[InlineData("abc")]
+	[InlineData("12ABC34501DE3A")]
+	[InlineData("12ABC34501DE355")]
 	public void ToCNPJ_EmptyForBlankOrNoDigits(string? input)
 		=> Assert.Equal(string.Empty, input.ToCnpj());
 }
